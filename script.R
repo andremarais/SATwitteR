@@ -8,7 +8,7 @@ setwd("C:/Users/Veldrin/Documents/GitHub/SATwitteR")
 
 #Laptop
 setwd("C:/Users/anmarais/Desktop/GitHub/SATwitteR")
-
+all.tweets <- readRDS("tweets.RDS")
 
 download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile="cacert.pem")
 
@@ -38,12 +38,12 @@ for (i in 1:15) {
 k <- 1
 # for (i in 1:nrow(t.handles)) {
 for (i in 1:15) {
-if (length(all.tweets[[i]]) > 1) {
+if (nrow(all.tweets[[i]]) > 1) {
   user.tweets <- data.frame()
-  for (j in 1:length(all.tweets[[i]])) {
-    user.tweets[j,1] <- as.character(all.tweets[[i]][[j]]$screenName)
-    user.tweets[j,2] <- as.character(all.tweets[[i]][[j]]$text)
-    user.tweets[j,3] <- as.character(as.Date(all.tweets[[i]][[j]]$created))
+  for (j in 1:nrow(all.tweets[[i]])) {
+    user.tweets[j,1] <- as.character(all.tweets[[i]][[1]][j])
+    user.tweets[j,2] <- as.character(all.tweets[[i]][[2]][j])
+    user.tweets[j,3] <- as.character(as.Date(all.tweets[[i]][[3]][j]))
     
   }
   
@@ -62,7 +62,7 @@ df <- df[-which(as.character(gregexpr("@", df$Tweet)) != -1),]
 tweet.corpus <- Corpus(VectorSource(df$Tweet))
 
 april.tweets <- df[which(df$TweetDate >= "2015-04-01"),]
-april.tweets <- april.tweets[40:50,]
+april.tweets[40:50,2]
 tweet.corpus <- Corpus(VectorSource(april.tweets$Tweet))
 tdm <- TermDocumentMatrix(tweet.corpus)
 
