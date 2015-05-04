@@ -8,8 +8,8 @@ setwd("C:/Users/Veldrin/Documents/GitHub/SATwitteR")
 
 
 #Laptop
-setwd("C:/Users/anmarais/Desktop/GitHub/SATwitteR")
-all.tweets <- readRDS("tweets.RDS")
+#setwd("C:/Users/anmarais/Desktop/GitHub/SATwitteR")
+#all.tweets <- readRDS("tweets.RDS")
 
 #download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile="cacert.pem")
 
@@ -23,23 +23,41 @@ setup_twitter_oauth(consumer_key,
                     access_token,
                     access_secret)
 
-lim1 <- getCurRateLimitInfo(c("lists", "users"))
+#lim1 <- getCurRateLimitInfo(c("lists", "users"))
 
-#t.handles <- data.frame(read.csv(file.path(getwd(), "/data/twitterhandles.csv")))
+
+t.handles <- data.frame(read.csv(file.path(getwd(), "/data/twitterhandles.csv")))
 
 all.tweets <- list()
 user.tweets <- data.frame()
 combined.tweets <- list()
 
+
+lim1 <- getCurRateLimitInfo(c("statuses", "application"))
+rate.status <- which(as.character(gregexpr("rate_limit_status", lim1$resource)) != -1)
+k <- as.numeric(lim1$remaining[rate.status])
+
  for (i in 1:nrow(t.handles)) {
-  #user.tweets <- userTimeline(as.character(t.handles[i,1]), n = 200)
-  all.tweets[[i]] <- try(userTimeline(as.character(t.handles[i,1]), n = 10))
-  print(i)
+
+  all.tweets[[i]] <- try(userTimeline(as.character(t.handles[i,1]), n = 3))
+
+  if (length(all.tweets[[i]]) == 0) t.handles[i,] <- NA # removes dud twitter accounts
+  
+  k <- k - 1  #stops the loop when limit has been reached
+  if (k ==0) break
+  
+  print(c(i,k))
+  
 }
+
+ii <- i
+
+write.csv(t.handles, file.path(getwd(), "/data/twitterhandles.csv"), row.names = F)
+
 
 
 k <- 1
- for (i in 1:nrow(t.handles)) {
+ for (i in 1:ii) {
 if (length(all.tweets[[i]]) > 1) {
   user.tweets <- data.frame()
   for (j in 1:length(all.tweets[[i]])) {
@@ -54,6 +72,9 @@ if (length(all.tweets[[i]]) > 1) {
 } 
 }
 
+
+
+
 df <- ldply(combined.tweets, data.frame)
 
 colnames(df) <- c("ScreenName", "Tweet", "TweetDate")
@@ -62,26 +83,26 @@ colnames(df) <- c("ScreenName", "Tweet", "TweetDate")
 df <- df[which(as.character(gregexpr("@", df$Tweet)) == -1),]
 
 
+# 
+urlstring <- "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 
 # removes emoticon bullshit
 df$Tweet <- sapply(df$Tweet, function(x) iconv(x,"latin1", "ASCII", sub = ""))
 df$Tweet <- sapply(df$Tweet, function(x) gsub("\n", "", x))
 df$Tweet <- sapply(df$Tweet, function(x) gsub("the", "", x, ignore.case = T)) #removeWords is buggy now, doesnt remove "the" when it's the first word of the string
+df$Tweet <- sapply(df$Tweet, function(x) gsub(urlstring, "", x))
 
-#http://t.co/tik7KVfnGG
-urlstring <- "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 
-short.urls <- regmatches(df$Tweet,gregexpr(urlstring, df$Tweet))
-short.urls <- as.character(unlist(short.urls[which(as.character(short.urls) != "character(0)")]))
-short.urls <- as.character(sapply(short.urls, function(x) substring(x, 1, nchar(x))))
-short.urls
-
-sapply(df$Tweet, function(x) mgsub(short.urls, "", x))
+b <- regmatches(df$Tweet,gregexpr("#(\\d|\\w)+", df$Tweet))
+c <- b[which(as.character(b) != "character(0)")]
+d <- table(unlist(tolower(c)))
+e <- order(d, decreasing = T)[1:10]
+d[e]
 
 
 
 
-gsub(short.urls, "", df$Tweet)
+
 
 tweet.corpus <- Corpus(VectorSource(df$Tweet))
 #tweet.corpus <- tm_map(tweet.corpus, tolower) buggy
@@ -104,8 +125,3 @@ wordcloud(names(v),v,c(4,.2),2,100)
 
 
 
-b <- regmatches(df$Tweet,gregexpr("#(\\d|\\w)+", df$Tweet))
-c <- b[which(as.character(b) != "character(0)")]
-d <- table(unlist(tolower(c)))
-e <- order(d, decreasing = T)[1:5]
-d[e]
